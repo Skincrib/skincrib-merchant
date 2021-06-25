@@ -4,12 +4,20 @@ const EventEmitter = require('events').EventEmitter;
 
 const SKINCRIB_URL = 'https://skincrib.com/merchants';
 
+const socket = io(SKINCRIB_URL, {
+    transports: ['websocket'],
+    upgrade: false
+});
+
 module.exports = class SkincribMerchant extends EventEmitter{
-    constructor({ key, reconnect, memory } = {key: null, reconnect: false, memory: false}){
-        assert(key, '"key" parameter must be included to connect to Skincrib.');
-        assert(typeof reconnect == Boolean, '"reconnect" parameter must be a boolean.');
-        assert(typeof memory == Boolean, '"memory" parameter must be a boolean.');
+    constructor({ key, reconnect, memory } = {key: null, reconnect: true, memory: true}){
         super();
+
+        assert(key, '"key" parameter must be included to connect to Skincrib.');
+        assert(typeof reconnect !== Boolean, '"reconnect" parameter must be a boolean.');
+        assert(typeof memory !== Boolean, '"memory" parameter must be a boolean.');
+        this.connected();
+
         this.key = key; //api key
         this.reconnect = reconnect;
         this.memory = memory;
@@ -22,26 +30,23 @@ module.exports = class SkincribMerchant extends EventEmitter{
         }
 
         this.clients = {
-            deposits: {
+            deposits: {},
+            withdraws: {}
+            /*deposits: {
                 'steamid': []
             },
             withdraws: {
                 'steamid': []
-            }
+            }*/
         }
 
-        this.socket = io(SKINCRIB_URL, {
-            transports: ['websocket'],
-            upgrade: false
-        });
+        socket.on('connect', this.connected);
+        socket.on('disconnect', this.disconnected);
+        socket.on('error', this.error);
 
-        this.socket.on('connect', this.connected);
-        this.socket.on('disconnect', this.disconnected);
-        this.socket.on('error', this.error);
-
-        this.socket.on('p2p:listings:new', this.listingAdded);
-        this.socket.on('p2p:listings:removed', this.listingRemoved);
-        this.socket.on('p2p:listings:status', this.listingStatus);
+        socket.on('p2p:listings:new', this.listingAdded);
+        socket.on('p2p:listings:removed', this.listingRemoved);
+        socket.on('p2p:listings:status', this.listingStatus);
     }
 
     get marketValue(){
@@ -53,28 +58,27 @@ module.exports = class SkincribMerchant extends EventEmitter{
     get getAllListingsFromMemory(){
         return this.listings;
     }
-    get clientDeposits(steamid){
+    getClientDeposits(steamid){
         return this.clients.deposits[steamid];
-
     }
-    get clientWithdraws(steamid){
+    getClientWithdraws(steamid){
         return this.clients.withdraws[steamid];
     }
 
-    static connected(){
+    connected(){
         return this.emit('connected', 'Connected to Skincrib websocket server.');
     }
-    static disconnected(){
+    disconnected(){
         this.authenticated = false;
         if(this.reconnect) this.authenticate();
         return this.emit('disconnected', 'Disconnected from Skincrib websocket server.');
     }
-    static error(error){
+    error(error){
         if(error.message) return this.emit('error', error.message);
         this.emit('error', error);
     }
 
-    static listingAdded(listing){
+    listingAdded(listing){
         if(this.memory){
             if(listing.price > this.market.max){
                 this.market.max = listing.price;
@@ -82,9 +86,9 @@ module.exports = class SkincribMerchant extends EventEmitter{
             this.listings.push(listing);
         }
         
-        this.emit('listing-added', listing);
+        this.emit('listing_added', listing);
     }
-    static listingRemoved(assetid){
+    listingRemoved(assetid){
         if(this.memory){
             let listing = this.listings.find(x => x.assetid == assetid);
             let index = this.listings.findIndex(x => x.assetid == assetid);
@@ -95,22 +99,24 @@ module.exports = class SkincribMerchant extends EventEmitter{
             }
             this.listings.splice(index, 1);
             this.market.value -= listing.price;
+
+            return this.emit('listing_removed', listing);
         }
 
-        this.emit('listing-removed', listing ? listing : assetid);
+        this.emit('listing_removed', assetid);
     }
-    static listingStatus(listing){
+    listingStatus(listing){
 
     }
     //authenticate to api
     authenticate(){
         return new Promise((res, rej)=>{
-            this.socket.emit('authenticate', {key}, (err, data)=>{
+            socket.emit('authenticate', {key: this.key}, (err, data)=>{
                 if(err){
                     return rej(err.message);
                 }
                 this.authenticated = true;
-                this.emit('authenticated', 'Successfully connected to merchant socket.');
+                this.emit('authenticated', 'Connected to merchant socket.');
                 return res(data.data);
             });
         });
@@ -121,7 +127,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
             assert(steamid);
             assert(this.authenticated, 'You must authenticate to the websocket first.');
 
-            this.socket.emit('user:loadInventory', {steamid}, (err, data)=>{
+            socket.emit('user:loadInventory', {steamid}, (err, data)=>{
                 if(err){
                     return rej(err.message);
                 }
@@ -134,7 +140,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
         return new Promise((res, rej)=>{
             assert(this.authenticated, 'You must authenticate to the websocket first.');
 
-            this.socket.emit('p2p:listings:get', {}, (err, data)=>{
+            socket.emit('p2p:listings:get', {}, (err, data)=>{
                 if(err){
                     return rej(err.message);
                 }
@@ -146,8 +152,9 @@ module.exports = class SkincribMerchant extends EventEmitter{
         });
     }
     //create new listing on market
-    createListing(steamid, apiKey, tradeUrl, items){
+    createListing(options){
         return new Promise((res, rej)=>{
+            const {steamid, apiKey, tradeUrl, items} = options;
             assert(this.authenticated, 'You must authenticate to the websocket first.');
             assert(steamid, 'Provide a client\'s SteamID64.');
             assert(apiKey, 'Provide a client\'s Steam api-key.');
@@ -155,7 +162,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
             assert((typeof items == Array && items.length > 0), 'Provide an array of at least one item object to list.');
             items.forEach((x, i) => assert((x.assetid && x.price && x.percentIncrease), `Item object index ${i} should contain a minimum of: assetid, price, percentIncrease.`));
 
-            this.socket.emit('p2p:listings:new', {steamid, apiKey, tradeUrl, items}, (err, data)=>{
+            socket.emit('p2p:listings:new', {steamid, apiKey, tradeUrl, items}, (err, data)=>{
                 if(err.message){
                     return rej(err.message);
                 }
@@ -163,13 +170,14 @@ module.exports = class SkincribMerchant extends EventEmitter{
         });
     }
     //cancel listing on market
-    cancelListing(steamid, assetids){
+    cancelListing(options){
         return new Promise((res, rej)=>{
+            const {steamid, assetids} = options;
             assert(this.authenticated, 'You must authenticate to the websocket first.');
             assert(steamid, 'Provide a client\'s SteamID64.');
             assert((typeof assetids == Array && assetids.length > 0), 'Provide an array of at least one assetid to cancel.');
 
-            this.socket.emit('p2p:listings:cancel', {steamid, assetids}, (err, data)=>{
+            socket.emit('p2p:listings:cancel', {steamid, assetids}, (err, data)=>{
                 if(err.message){
                     return rej(err.message);
                 }

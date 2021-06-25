@@ -1,5 +1,5 @@
 {
-  "name": "skincrib-merchant",
+  "name": "@skincrib/skincrib-merchant",
   "version": "1.0.0",
   "description": "Package for interacting with the skincrib merchant API.",
   "main": "index.js",
@@ -25,5 +25,6 @@
     "assert": "^2.0.0",
     "events": "^3.3.0",
     "socket.io-client": "^2.4.0"
-  }
+  },
+  "devDependencies": {}
 }
