@@ -20,5 +20,10 @@
   "bugs": {
     "url": "https://github.com/Skincrib/skincrib-merchant/issues"
   },
-  "homepage": "https://github.com/Skincrib/skincrib-merchant#readme"
+  "homepage": "https://github.com/Skincrib/skincrib-merchant#readme",
+  "dependencies": {
+    "assert": "^2.0.0",
+    "events": "^3.3.0",
+    "socket.io-client": "^2.4.0"
+  }
 }
