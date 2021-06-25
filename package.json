@@ -1,0 +1,24 @@
+{
+  "name": "skincrib-merchant",
+  "version": "1.0.0",
+  "description": "Package for interacting with the skincrib merchant API.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Skincrib/skincrib-merchant.git"
+  },
+  "keywords": [
+    "skincrib",
+    "merchant",
+    "websocket"
+  ],
+  "author": "sampli",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Skincrib/skincrib-merchant/issues"
+  },
+  "homepage": "https://github.com/Skincrib/skincrib-merchant#readme"
+}
