@@ -14,8 +14,8 @@ module.exports = class SkincribMerchant extends EventEmitter{
         super();
 
         assert(key, '"key" parameter must be included to connect to Skincrib.');
-        assert(typeof reconnect !== Boolean, '"reconnect" parameter must be a boolean.');
-        assert(typeof memory !== Boolean, '"memory" parameter must be a boolean.');
+        assert(typeof reconnect == Boolean, '"reconnect" parameter must be a boolean.');
+        assert(typeof memory == Boolean, '"memory" parameter must be a boolean.');
         this.connected();
 
         this.key = key; //api key
@@ -105,9 +105,26 @@ module.exports = class SkincribMerchant extends EventEmitter{
 
         this.emit('listing_removed', assetid);
     }
-    listingStatus(listing){
-
+    findListing(type, assetid){
+        for(const steamid of Object.keys(this.clients[type])){
+            let listing = this.clients[type][steamid].find(x => x.assetid == assetid);
+            if(listing){
+                return [steamid, listing, this.clients[type][steamid].findIndex(x => x.assetid == assetid)];
+            }
+        }
+        return [false, false, false];
     }
+    listingStatus(listing){
+        if(this.memory){
+            let [steamid, newListing, index] = this.findListing(listing.type, listing.assetid);
+                
+            this.clients[listing.type][steamid][index] = newListing;
+            this.emit('listing_updated', {...listing, steamid});
+        } else{
+            this.emit('listing_updated', listing);
+        }
+    }
+
     //authenticate to api
     authenticate(){
         return new Promise((res, rej)=>{
@@ -152,7 +169,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
         });
     }
     //create new listing on market
-    createListing(options){
+    createListings(options){
         return new Promise((res, rej)=>{
             const {steamid, apiKey, tradeUrl, items} = options;
             assert(this.authenticated, 'You must authenticate to the websocket first.');
@@ -166,11 +183,19 @@ module.exports = class SkincribMerchant extends EventEmitter{
                 if(err.message){
                     return rej(err.message);
                 }
+                if(this.memory){
+                    if(!this.clients.deposits[steamid]){
+                        this.clients.deposits[steamid] = [];
+                    }
+                    this.clients.deposits[steamid].concat(data.data);
+                }
+
+                return res(err, data.data);
             });
         });
     }
     //cancel listing on market
-    cancelListing(options){
+    cancelListings(options){
         return new Promise((res, rej)=>{
             const {steamid, assetids} = options;
             assert(this.authenticated, 'You must authenticate to the websocket first.');
@@ -181,6 +206,57 @@ module.exports = class SkincribMerchant extends EventEmitter{
                 if(err.message){
                     return rej(err.message);
                 }
+                if(this.memory){
+                    if(this.clients.deposits[steamid]){
+                        for(const assetid of Object.keys(data.data)){
+                            let index = this.clients.deposits[steamid].findIndex(x => x.assetid == assetid);
+                            if(index == -1) continue;
+
+                            this.clients.deposits[steamid].splice(index, 1);
+                        }
+                    }
+                }
+
+                return res(err, data.data);
+            });
+        });
+    }
+    //purchase listing on market
+    purchaseListing(options){
+        return new Promise((res, rej)=>{
+            const {steamid, assetid} = options;
+            assert(this.authenticated, 'You must authenticate to the websocket first.');
+            assert(steamid, 'Provide a client\'s SteamID64.');
+            assert(assetid, 'Provide the Asset ID of the listing you want to purchase.');
+
+            socket.emit('p2p:listings:purchase', {steamid, item: {assetid}}, (err, data)=>{
+                if(err){
+                    return rej(err.message);
+                }
+
+                if(this.memory){
+                    if(!this.clients.withdraws[steamid]){
+                        this.clients.withdraws[steamid] = [];
+                    }
+                    this.clients.withdraws[steamid].push(data.data);
+                }
+                return res(data.data);
+            });
+        });
+    }
+    //confirm seller is ready to sell item
+    confirmListing(options){
+        return new Promise((res, rej)=>{
+            const {steamid, assetid} = options;
+            assert(this.authenticated, 'You must authenticate to the websocket first.');
+            assert(steamid, 'Provide a client\'s SteamID64.');
+            assert(assetid, 'Provide the Asset ID of the listing you want to confirm.');
+
+            socket.emit('p2p:listings:confirm', {steamid, assetid}, (err, data)=>{
+                if(err){
+                    return rej(err.message);
+                }
+                return res(data.message);
             });
         });
     }
