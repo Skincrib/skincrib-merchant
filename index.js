@@ -12,10 +12,9 @@ const socket = io(SKINCRIB_URL, {
 module.exports = class SkincribMerchant extends EventEmitter{
     constructor({ key, reconnect, memory } = {key: null, reconnect: true, memory: true}){
         super();
-
         assert(key, '"key" parameter must be included to connect to Skincrib.');
-        assert(typeof reconnect == Boolean, '"reconnect" parameter must be a boolean.');
-        assert(typeof memory == Boolean, '"memory" parameter must be a boolean.');
+        assert(typeof reconnect == 'boolean', '"reconnect" parameter must be a boolean.');
+        assert(typeof memory == 'boolean', '"memory" parameter must be a boolean.');
         this.connected();
 
         this.key = key; //api key
@@ -40,13 +39,13 @@ module.exports = class SkincribMerchant extends EventEmitter{
             }*/
         }
 
-        socket.on('connect', this.connected);
-        socket.on('disconnect', this.disconnected);
-        socket.on('error', this.error);
+        socket.on('connect', ()=>this.connected);
+        socket.on('disconnect', ()=>this.disconnected);
+        socket.on('error', ()=>this.error);
 
-        socket.on('p2p:listings:new', this.listingAdded);
-        socket.on('p2p:listings:removed', this.listingRemoved);
-        socket.on('p2p:listings:status', this.listingStatus);
+        socket.on('p2p:listings:new', (listing)=>this.listingAdded(listing));
+        socket.on('p2p:listings:removed', ({assetid})=>this.listingRemoved(assetid));
+        socket.on('p2p:listings:status', (listing)=>this.listingStatus(listing));
     }
 
     get marketValue(){
@@ -92,7 +91,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
         if(this.memory){
             let listing = this.listings.find(x => x.assetid == assetid);
             let index = this.listings.findIndex(x => x.assetid == assetid);
-    
+
             if(index == -1) return;
             if(listing.price == this.market.max){
                 this.market.max = Math.max.apply(Math, this.listings.map(x=> x.price ))
