@@ -86,7 +86,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
             this.listings.push(listing);
         }
         
-        this.emit('listing_added', listing);
+        this.emit('listing.added', listing);
     }
     listingRemoved(assetid){
         if(this.memory){
@@ -100,10 +100,10 @@ module.exports = class SkincribMerchant extends EventEmitter{
             this.listings.splice(index, 1);
             this.market.value -= listing.price;
 
-            return this.emit('listing_removed', listing);
+            return this.emit('listing.removed', listing);
         }
 
-        this.emit('listing_removed', assetid);
+        this.emit('listing.removed', assetid);
     }
     findListing(type, assetid){
         for(const steamid of Object.keys(this.clients[type])){
@@ -119,9 +119,9 @@ module.exports = class SkincribMerchant extends EventEmitter{
             let [steamid, newListing, index] = this.findListing(listing.type, listing.assetid);
                 
             this.clients[listing.type][steamid][index] = newListing;
-            this.emit('listing_updated', {...listing, steamid});
+            this.emit('listing.updated', {...listing, steamid});
         } else{
-            this.emit('listing_updated', listing);
+            this.emit('listing.updated', listing);
         }
     }
 

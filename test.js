@@ -16,13 +16,13 @@ market.on('error', (error)=>{
     console.error(error);
 });
 
-market.on('listing_added', (listing)=>{ //new listing on market, send to clients when this is recieved
+market.on('listing.added', (listing)=>{ //new listing on market, send to clients when this is recieved
     console.log('Listing Added:', listing);
 });
-market.on('listing_removed', (listing)=>{ //listing removed from market
+market.on('listing.removed', (listing)=>{ //listing removed from market
     console.log('Listing Removed:', listing);
 });
-market.on('listing_updated', (listing)=>{ //one of your client's active listings has had a status update
+market.on('listing.updated', (listing)=>{ //one of your client's active listings has had a status update
     console.log('Listing Updated:', listing);
 });
 
