@@ -223,12 +223,13 @@ module.exports = class SkincribMerchant extends EventEmitter{
     //purchase listing on market
     purchaseListing(options){
         return new Promise((res, rej)=>{
-            const {steamid, assetid} = options;
+            const {steamid, tradeUrl, assetid} = options;
             assert(this.authenticated, 'You must authenticate to the websocket first.');
             assert(steamid, 'Provide a client\'s SteamID64.');
+            assert(tradeUrl, 'Provide the Trade URL of the client that wants to purchase an item.');
             assert(assetid, 'Provide the Asset ID of the listing you want to purchase.');
 
-            socket.emit('p2p:listings:purchase', {steamid, item: {assetid}}, (err, data)=>{
+            socket.emit('p2p:listings:purchase', {steamid, tradeUrl, item: {assetid}}, (err, data)=>{
                 if(err){
                     return rej(err.message);
                 }
