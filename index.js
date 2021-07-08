@@ -29,12 +29,12 @@ module.exports = class SkincribMerchant extends EventEmitter{
         }
 
         this.clients = {
-            deposits: {},
-            withdraws: {}
-            /*deposits: {
+            deposit: {},
+            withdraw: {}
+            /*deposit: {
                 'steamid': []
             },
-            withdraws: {
+            withdraw: {
                 'steamid': []
             }*/
         }
@@ -58,10 +58,10 @@ module.exports = class SkincribMerchant extends EventEmitter{
         return this.listings;
     }
     getClientDeposits(steamid){
-        return this.clients.deposits[steamid];
+        return this.clients.deposit[steamid];
     }
     getClientWithdraws(steamid){
-        return this.clients.withdraws[steamid];
+        return this.clients.withdraw[steamid];
     }
 
     connected(){
@@ -140,8 +140,8 @@ module.exports = class SkincribMerchant extends EventEmitter{
     //load client csgo inventory
     loadInventory(steamid){
         return new Promise((res, rej)=>{
-            assert(steamid);
             assert(this.authenticated, 'You must authenticate to the websocket first.');
+            assert(steamid, 'Provide a client\'s SteamID64.');
 
             socket.emit('user:loadInventory', {steamid}, (err, data)=>{
                 if(err){
@@ -167,15 +167,37 @@ module.exports = class SkincribMerchant extends EventEmitter{
             });
         });
     }
-    //create new listing on market
-    createListings(options){
+    //fetch active listings for specific steamid
+    getClientActiveListings(steamid){
         return new Promise((res, rej)=>{
-            const {steamid, apiKey, tradeUrl, items} = options;
+            assert(this.authenticated, 'You must authenticate to the websocket first.');
+            assert(steamid, 'Provide a client\'s SteamID64.');
+
+            socket.emit('p2p:listings:active', {steamid}, (err, data)=>{
+                if(err){
+                    return rej(err.message);
+                }
+
+                let deposits = data.data.filter(x => x.type == 'deposit');
+                let withdraws = data.data.filter(x => x.type == 'withdraw');
+
+                if(this.memory){
+                    this.clients.deposit[steamid] = deposits;
+                    this.clients.withdraw[steamid] = withdraws;
+                }
+
+                return res({deposits, withdraws});
+            })
+        });
+    }
+    //create new listing on market
+    createListings({steamid, apiKey, tradeUrl, items}){
+        return new Promise((res, rej)=>{
             assert(this.authenticated, 'You must authenticate to the websocket first.');
             assert(steamid, 'Provide a client\'s SteamID64.');
             assert(apiKey, 'Provide a client\'s Steam api-key.');
             assert(tradeUrl, 'Provide a client\'s Steam tradeurl.');
-            assert((typeof items == Array && items.length > 0), 'Provide an array of at least one item object to list.');
+            assert((typeof items == 'object' && items.length > 0), 'Provide an array of at least one item object to list.');
             items.forEach((x, i) => assert((x.assetid && x.price && x.percentIncrease), `Item object index ${i} should contain a minimum of: assetid, price, percentIncrease.`));
 
             socket.emit('p2p:listings:new', {steamid, apiKey, tradeUrl, items}, (err, data)=>{
@@ -183,10 +205,10 @@ module.exports = class SkincribMerchant extends EventEmitter{
                     return rej(err.message);
                 }
                 if(this.memory){
-                    if(!this.clients.deposits[steamid]){
-                        this.clients.deposits[steamid] = [];
+                    if(!this.clients.deposit[steamid]){
+                        this.clients.deposit[steamid] = [];
                     }
-                    this.clients.deposits[steamid].concat(data.data);
+                    this.clients.deposit[steamid].concat(data.data);
                 }
 
                 return res(err, data.data);
@@ -194,24 +216,23 @@ module.exports = class SkincribMerchant extends EventEmitter{
         });
     }
     //cancel listing on market
-    cancelListings(options){
+    cancelListings({steamid, ids}){
         return new Promise((res, rej)=>{
-            const {steamid, assetids} = options;
             assert(this.authenticated, 'You must authenticate to the websocket first.');
             assert(steamid, 'Provide a client\'s SteamID64.');
-            assert((typeof assetids == Array && assetids.length > 0), 'Provide an array of at least one assetid to cancel.');
+            assert((typeof ids == 'object' && ids.length > 0), 'Provide an array of at least one assetid to cancel.');
 
-            socket.emit('p2p:listings:cancel', {steamid, assetids}, (err, data)=>{
+            socket.emit('p2p:listings:cancel', {steamid, ids}, (err, data)=>{
                 if(err.message){
                     return rej(err.message);
                 }
                 if(this.memory){
-                    if(this.clients.deposits[steamid]){
+                    if(this.clients.deposit[steamid]){
                         for(const assetid of Object.keys(data.data)){
-                            let index = this.clients.deposits[steamid].findIndex(x => x.assetid == assetid);
+                            let index = this.clients.deposit[steamid].findIndex(x => x.assetid == assetid);
                             if(index == -1) continue;
 
-                            this.clients.deposits[steamid].splice(index, 1);
+                            this.clients.deposit[steamid].splice(index, 1);
                         }
                     }
                 }
@@ -221,37 +242,36 @@ module.exports = class SkincribMerchant extends EventEmitter{
         });
     }
     //purchase listing on market
-    purchaseListing(options){
+    purchaseListing({steamid, tradeUrl, id}){
         return new Promise((res, rej)=>{
-            const {steamid, assetid} = options;
             assert(this.authenticated, 'You must authenticate to the websocket first.');
             assert(steamid, 'Provide a client\'s SteamID64.');
-            assert(assetid, 'Provide the Asset ID of the listing you want to purchase.');
+            assert(tradeUrl, 'Provide a client\'s Steam tradeurl.');
+            assert(id, 'Provide the ID of the listing you want to purchase.');
 
-            socket.emit('p2p:listings:purchase', {steamid, item: {assetid}}, (err, data)=>{
+            socket.emit('p2p:listings:purchase', {steamid, tradeUrl, id}, (err, data)=>{
                 if(err){
                     return rej(err.message);
                 }
 
                 if(this.memory){
-                    if(!this.clients.withdraws[steamid]){
-                        this.clients.withdraws[steamid] = [];
+                    if(!this.clients.withdraw[steamid]){
+                        this.clients.withdraw[steamid] = [];
                     }
-                    this.clients.withdraws[steamid].push(data.data);
+                    this.clients.withdraw[steamid].push(data.data);
                 }
                 return res(data.data);
             });
         });
     }
     //confirm seller is ready to sell item
-    confirmListing(options){
+    confirmListing({steamid, id}){
         return new Promise((res, rej)=>{
-            const {steamid, assetid} = options;
             assert(this.authenticated, 'You must authenticate to the websocket first.');
             assert(steamid, 'Provide a client\'s SteamID64.');
-            assert(assetid, 'Provide the Asset ID of the listing you want to confirm.');
+            assert(id, 'Provide the ID of the listing you want to confirm.');
 
-            socket.emit('p2p:listings:confirm', {steamid, assetid}, (err, data)=>{
+            socket.emit('p2p:listings:confirm', {steamid, id}, (err, data)=>{
                 if(err){
                     return rej(err.message);
                 }
