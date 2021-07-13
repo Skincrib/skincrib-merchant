@@ -116,7 +116,10 @@ module.exports = class SkincribMerchant extends EventEmitter{
     listingStatus(listing){
         if(this.memory){
             let [steamid, newListing, index] = this.findListing(listing.type, listing.assetid);
-                
+            if(!steamid || !newListing || !index){
+                return this.emit('listing.updated', listing);
+            }
+
             this.clients[listing.type][steamid][index] = newListing;
             this.emit('listing.updated', {...listing, steamid});
         } else{
