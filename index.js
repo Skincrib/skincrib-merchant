@@ -44,7 +44,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
         socket.on('error', ()=>this.error);
 
         socket.on('p2p:listings:new', (listing)=>this.listingAdded(listing));
-        socket.on('p2p:listings:removed', ({assetid})=>this.listingRemoved(assetid));
+        socket.on('p2p:listings:removed', ({id})=>this.listingRemoved(id));
         socket.on('p2p:listings:status', (listing)=>this.listingStatus(listing));
     }
 
@@ -87,10 +87,10 @@ module.exports = class SkincribMerchant extends EventEmitter{
         
         this.emit('listing.added', listing);
     }
-    listingRemoved(assetid){
+    listingRemoved(id){
         if(this.memory){
-            let listing = this.listings.find(x => x.assetid == assetid);
-            let index = this.listings.findIndex(x => x.assetid == assetid);
+            let listing = this.listings.find(x => x.id == id);
+            let index = this.listings.findIndex(x => x.id == id);
 
             if(index == -1) return;
             if(listing.price == this.market.max){
@@ -102,20 +102,20 @@ module.exports = class SkincribMerchant extends EventEmitter{
             return this.emit('listing.removed', listing);
         }
 
-        this.emit('listing.removed', assetid);
+        this.emit('listing.removed', id);
     }
-    findListing(type, assetid){
+    findListing(type, id){
         for(const steamid of Object.keys(this.clients[type])){
-            let listing = this.clients[type][steamid].find(x => x.assetid == assetid);
+            let listing = this.clients[type][steamid].find(x => x.id == id);
             if(listing){
-                return [steamid, listing, this.clients[type][steamid].findIndex(x => x.assetid == assetid)];
+                return [steamid, listing, this.clients[type][steamid].findIndex(x => x.id == id)];
             }
         }
         return [false, false, false];
     }
     listingStatus(listing){
         if(this.memory){
-            let [steamid, newListing, index] = this.findListing(listing.type, listing.assetid);
+            let [steamid, newListing, index] = this.findListing(listing.type, listing.id);
             if(!steamid || !newListing || !index){
                 return this.emit('listing.updated', listing);
             }
