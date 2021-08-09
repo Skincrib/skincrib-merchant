@@ -214,7 +214,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
                     this.clients.deposit[steamid].concat(data.data);
                 }
 
-                return res(err, data.data);
+                return res([err, data.data]);
             });
         });
     }
@@ -240,7 +240,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
                     }
                 }
 
-                return res(err, data.data);
+                return res([err, data.data]);
             });
         });
     }
