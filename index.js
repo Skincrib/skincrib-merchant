@@ -197,7 +197,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
     //return boolean if item has proper keys
     verifyItemObject(item){
         let objKeys = Object.keys(item);
-        for(const key of PROPER_ITEM_KEYS){
+        for(const key of [ 'assetid', 'price', 'percentIncrease' ]){
             if(!objKeys.includes(key)) return false;
         }
         return true;
@@ -210,7 +210,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
             assert(apiKey, 'Provide a client\'s Steam api-key.');
             assert(tradeUrl, 'Provide a client\'s Steam tradeurl.');
             assert((typeof items == 'object' && items.length > 0), 'Provide an array of at least one item object to list.');
-            items.forEach((x, i) => assert(verifyItemObject(x), `Item object index ${i} should contain a minimum of: assetid, price, percentIncrease.`));
+            items.forEach((x, i) => assert(this.verifyItemObject(x), `Item object index ${i} should contain a minimum of: assetid, price, percentIncrease.`));
 
             socket.emit('p2p:listings:new', {steamid, apiKey, tradeUrl, items}, (err, data)=>{
                 if(err.message){
