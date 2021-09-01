@@ -1,18 +1,9 @@
 const Skincrib = require('./index.js');
 
-let buyer = {
-    steamId: "76561198314565574",
-    apiKey: "BA773D131B36935FCF99BD287F3743EB",
-    tradeUrl: "https://steamcommunity.com/tradeoffer/new/?partner=354299846&token=-jfYEB7D",
-};
-let seller = {
-    steamId: "76561198317890476",
-    apiKey: "9396D8B00854FFA134E22883919DEA93",
-    tradeUrl: "https://steamcommunity.com/tradeoffer/new/?partner=357624748&token=TD_35VpT",
-};
+
 
 const market = new Skincrib({
-    key: '76561198392185014-279516a0-16e1-4f8e-b0b5-02e4e4c9db8b', //skincrib merchant api key
+    key: '', //skincrib merchant api key
     reconnect: true, //auto-reconnect to websocket if disconnected
     memory: true //store listings and active client deposits/withdraws in memory
 });
