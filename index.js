@@ -17,6 +17,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
         assert(typeof memory == 'boolean', '"memory" parameter must be a boolean.');
         this.connected();
 
+        this.socket = socket; //add socket to class if needed to be accessed.
         this.key = key; //api key
         this.reconnect = reconnect;
         this.memory = memory;
@@ -193,6 +194,14 @@ module.exports = class SkincribMerchant extends EventEmitter{
             })
         });
     }
+    //return boolean if item has proper keys
+    verifyItemObject(item){
+        let objKeys = Object.keys(item);
+        for(const key of PROPER_ITEM_KEYS){
+            if(!objKeys.includes(key)) return false;
+        }
+        return true;
+    }
     //create new listing on market
     createListings({steamid, apiKey, tradeUrl, items}){
         return new Promise((res, rej)=>{
@@ -201,7 +210,7 @@ module.exports = class SkincribMerchant extends EventEmitter{
             assert(apiKey, 'Provide a client\'s Steam api-key.');
             assert(tradeUrl, 'Provide a client\'s Steam tradeurl.');
             assert((typeof items == 'object' && items.length > 0), 'Provide an array of at least one item object to list.');
-            items.forEach((x, i) => assert((x.assetid && x.price && x.percentIncrease), `Item object index ${i} should contain a minimum of: assetid, price, percentIncrease.`));
+            items.forEach((x, i) => assert(verifyItemObject(x), `Item object index ${i} should contain a minimum of: assetid, price, percentIncrease.`));
 
             socket.emit('p2p:listings:new', {steamid, apiKey, tradeUrl, items}, (err, data)=>{
                 if(err.message){

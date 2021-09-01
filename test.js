@@ -1,7 +1,7 @@
 const Skincrib = require('./index.js');
 
 const market = new Skincrib({
-    key: 'KEY HERE', //skincrib merchant api key
+    key: '76561198392185014-279516a0-16e1-4f8e-b0b5-02e4e4c9db8b', //skincrib merchant api key
     reconnect: true, //auto-reconnect to websocket if disconnected
     memory: true //store listings and active client deposits/withdraws in memory
 });
