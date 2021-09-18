@@ -40,9 +40,9 @@ module.exports = class SkincribMerchant extends EventEmitter{
             }*/
         }
 
-        socket.on('connect', ()=>this.connected);
-        socket.on('disconnect', ()=>this.disconnected);
-        socket.on('error', ()=>this.error);
+        socket.on('connect', ()=>this.connected());
+        socket.on('disconnect', ()=>this.disconnected());
+        socket.on('error', (err)=>this.error(err));
 
         socket.on('p2p:listings:new', (listing)=>this.listingAdded(listing));
         socket.on('p2p:listings:removed', ({id})=>this.listingRemoved(id));
